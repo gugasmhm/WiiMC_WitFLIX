@@ -6,6 +6,7 @@
  * Music playlist
  ***************************************************************************/
 
+#include "utils/tls.h"
 #include <gccore.h>
 #include <stdlib.h>
 #include <string.h>
@@ -98,7 +99,7 @@ int MusicPlaylistLoad()
 	char ext[7];
 	GetExt(browser.dir, ext);
 
-	if(IsPlaylistExt(ext) || strncmp(browser.dir, "http:", 5) == 0)
+	if(IsPlaylistExt(ext) || is_http_url(browser.dir))
 		f_entry->type = TYPE_PLAYLIST;
 	else
 		f_entry->type = TYPE_FOLDER;

@@ -6,6 +6,7 @@
  * File operations
  ***************************************************************************/
 
+#include "utils/tls.h"
 #include <gccore.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,7 +49,7 @@ extern "C" {
 #include "utils/http.h"
 #include "utils/gettext.h"
 
-#define PARSESTACK (32*1024)
+#define PARSESTACK (96*1024) // handshake TLS
 #define DEVICESTACK (32*1024)
 
 static u8 parsestack[PARSESTACK] ATTRIBUTE_ALIGN (32);
@@ -1590,10 +1591,11 @@ bool IsAllowedProtocol(char *file)
 
 bool IsInternetStream(char *file)
 {
-	if(strncmp(file, "http://", 7) != 0)
+	int skip = !strncmp(file, "https://", 8) ? 8 : 7;
+	if(skip == 7 && strncmp(file, "http://", 7) != 0)
 		return false;
 
-	char *pos = strchr(&file[7], '/');
+	char *pos = strchr(&file[skip], '/');
 	
 	if(!pos || pos == &file[strlen(file)-1])
 		return true;
@@ -2034,7 +2036,7 @@ static int ParsePLXPlaylist()
 	memset(buffer, 0, MAX_PLX_SIZE);
 	int size = 0;
 
-	if(strncmp(browser.dir, "http:", 5) == 0)
+	if(is_http_url(browser.dir))
 		size = http_request(browser.dir, NULL, buffer, MAX_PLX_SIZE, SILENT);
 	else
 		size = LoadFile(buffer, MAX_PLX_SIZE, browser.dir, SILENT);
@@ -2201,7 +2203,7 @@ static int ParsePLXPlaylist()
 	f_entry->length = 0;
 	f_entry->icon = ICON_FOLDER;
 
-	if(IsPlaylistExt(ext) || strncmp(root, "http:", 5) == 0)
+	if(IsPlaylistExt(ext) || is_http_url(root))
 		f_entry->type = TYPE_PLAYLIST;
 	else
 		f_entry->type = TYPE_FOLDER;
@@ -2398,7 +2400,7 @@ int ParsePlaylistFile()
 					break;
 				}		
 				
-				if(IsPlaylistExt(ext) || strncmp(root, "http:", 5) == 0)
+				if(IsPlaylistExt(ext) || is_http_url(root))
 					f_entry->type = TYPE_PLAYLIST;
 				else
 					f_entry->type = TYPE_FOLDER;

@@ -21,7 +21,7 @@ MPLAYER		:=	$(CURDIR)/source/mplayer
 TARGET		:=	wiimc
 TARGETDIR	:=	executables
 BUILD		:=	build
-SOURCES		:=	source source/libwiigui source/utils source/utils/unzip
+SOURCES		:=	source source/libwiigui source/utils source/utils/unzip libs/mbedtls/library
 DATA		:=	source/images source/lang source/fonts
 INCLUDES	:=	source source/mplayer
 
@@ -105,6 +105,7 @@ export HFILES := $(addsuffix .h,$(subst .,_,$(BINFILES)))
 # build a list of include paths
 #---------------------------------------------------------------------------------
 export INCLUDE	:=	$(foreach dir,$(INCLUDES), -iquote $(CURDIR)/$(dir)) \
+					-I$(CURDIR)/libs/mbedtls/include \
 					$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
 					-I$(CURDIR)/$(BUILD) \
 					-I$(LIBOGC_INC)

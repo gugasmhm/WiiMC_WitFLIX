@@ -40,12 +40,13 @@
 
 #if defined(GEKKO)
 #include <network.h>
-#define send(a, b, c, d) net_send(a, b, c, d)
-#define recv(a, b, c, d) net_recv(a, b, c, d)
+#include "../../utils/tls.h"
+#define send(a, b, c, d) tls_send(a, b, c)
+#define recv(a, b, c, d) tls_recv(a, b, c)
 #define select(a, b, c, d, e) net_select(a, b, c, d, e)
 #define socket(a, b, c) net_socket(a, b, c)
 #define gethostbyname(a) net_gethostbyname(a)
-#define closesocket(a) net_close(a)
+#define closesocket(a) (tls_close(a), net_close(a))
 #define setsockopt(a, b, c, d, e) net_setsockopt(a, b, c, d, e)
 #define bind(a, b, c) net_bind(a, b, c)
 #define connect(a, b, c) net_connect(a, b, c)

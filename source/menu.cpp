@@ -6,6 +6,7 @@
  * Menu flow routines - handles all menu logic
  ***************************************************************************/
 
+#include "utils/tls.h"
 #include <gccore.h>
 #include <ogcsys.h>
 #include <stdio.h>
@@ -2974,8 +2975,8 @@ static void *ThumbThread (void *arg)
 			{
 				BROWSERENTRY *loadIndex = thumbIndex;
 				int read = 0;
-				//if(!bannerSSactive && loadIndex->image && strncmp(loadIndex->image, "http:", 5) == 0) {
-				if(!bannerSSactive && loadIndex->image && strncmp(browser.selIndex->file, "http:", 5) == 0) {
+				//if(!bannerSSactive && loadIndex->image && is_http_url(loadIndex->image)) {
+				if(!bannerSSactive && loadIndex->image && is_http_url(browser.selIndex->file)) {
 					//read = http_request(loadIndex->image, NULL, thumbBuffer, 200*1024, SILENT);
 					//read = http_request("https://cdn-albums.tunein.com/gn/B3XTN3P0BRg.jpg", NULL, thumbBuffer, 200*1024, SILENT);
 
@@ -3471,7 +3472,7 @@ static void MenuBrowse(int menu)
 	{
 		fileBrowser = new GuiFileBrowser(screenwidth-200, pagesize);
 		fileBrowser->SetRightCutoff();
-		LWP_CreateThread (&thumbthread, ThumbThread, NULL, NULL, 0, 60);
+		LWP_CreateThread (&thumbthread, ThumbThread, NULL, NULL, 64*1024, 60); // handshake TLS
 	}
 	else
 	{
@@ -3607,7 +3608,7 @@ static void MenuBrowse(int menu)
 		}
 	}
 
-	if(strncmp(browser.dir, "http:", 5) == 0)
+	if(is_http_url(browser.dir))
 	{
 		mainWindow->Append(disabled);
 		mainWindow->SetState(STATE_DISABLED);
@@ -3721,7 +3722,7 @@ static void MenuBrowse(int menu)
 		{
 			upOneLevelBtn.ResetState();
 
-			if(browser.selIndex && browser.selIndex->file && strncmp(browser.selIndex->file, "http:", 5) == 0)
+			if(browser.selIndex && browser.selIndex->file && is_http_url(browser.selIndex->file))
 			{
 				mainWindow->Append(disabled);
 				mainWindow->SetState(STATE_DISABLED);
@@ -3837,10 +3838,10 @@ static void MenuBrowse(int menu)
 					(browser.selIndex->type == TYPE_PLAYLIST ||
 					IsPlaylistExt(ext) || 
 					!IsAllowedProtocol(browser.selIndex->file) || 
-					(strncmp(browser.selIndex->file, "http:", 5) == 0 && !IsInternetStream(browser.selIndex->file)))
+					(is_http_url(browser.selIndex->file) && !IsInternetStream(browser.selIndex->file)))
 					)
 				{
-					if(strncmp(browser.selIndex->file, "http:", 5) == 0)
+					if(is_http_url(browser.selIndex->file))
 					{
 						mainWindow->Append(disabled);
 						mainWindow->SetState(STATE_DISABLED);
@@ -7250,14 +7251,14 @@ static void AudioNowPlayingCallback(void *ptr)
 						artSettingsChanged = false;
 					}
 		}
-		//if(strncmp(loadedFile, "http:", 5) == 0) //use to limit
+		//if(is_http_url(loadedFile)) //use to limit
 		artTimer = 0;
 	}
 
 	// display ICY data
 	if(total <= 0.01)
 	{
-		if(strncmp(loadedFile, "http:", 5) == 0)
+		if(is_http_url(loadedFile))
 		{
 			if(streamtitle_changed)
 			{
@@ -8319,7 +8320,7 @@ void MPlayerMenu()
 
 	HideVideoVolumeLevelBar();
 	
-	if(strncmp(loadedFile, "http:", 5) == 0)
+	if(is_http_url(loadedFile))
 	{
 		videobar->Remove(videobarBackwardBtn);
 		videobar->Remove(videobarForwardBtn);

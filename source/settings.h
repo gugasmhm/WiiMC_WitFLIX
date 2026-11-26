@@ -248,7 +248,7 @@ const char validSubtitleExtensions[][6] =
 	"jss", "js", "ass", ""
 };
 
-const char validInternetProtocols[][5] =
+const char validInternetProtocols[][6] =
 {
-	"http", "mms", ""
+	"http", "https", "mms", ""
 };

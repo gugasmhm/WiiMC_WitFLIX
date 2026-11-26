@@ -8,6 +8,7 @@
  * Written by dhewg/bushing, modified by Tantric
  ***************************************************************************/
 
+#include "tls.h"
 #include <malloc.h>
 #include <string.h>
 #include <stdio.h>
@@ -109,14 +110,14 @@ static s32 tcp_socket(void)
 	res = net_fcntl(s, F_GETFL, 0);
 	if (res < 0)
 	{
-		net_close(s);
+		tls_close(s), net_close(s);
 		return res;
 	}
 
 	res = net_fcntl(s, F_SETFL, res | IOS_O_NONBLOCK);
 	if (res < 0)
 	{
-		net_close(s);
+		tls_close(s), net_close(s);
 		return res;
 	}
 
@@ -163,7 +164,7 @@ static s32 tcp_connect(char *host, const u16 port)
 
 	if(res != -EISCONN)
 	{		
-		net_close(s);
+		tls_close(s), net_close(s);
 		return -1;
 	}
 
@@ -182,7 +183,7 @@ static int tcp_readln(const s32 s, char *buf, const u16 max_length)
 		if (ticks_to_millisecs(diff_ticks(start_time, gettime())) > HTTP_TIMEOUT)
 			break;
 
-		ret = net_read(s, &buf[c], 1);
+		ret = tls_recv(s, &buf[c], 1);
 
 		if (ret == -EAGAIN)
 		{
@@ -230,7 +231,7 @@ static u32 tcp_read(const s32 s, u8 *buffer, const u32 length)
 		if (block > TCP_RECV_SIZE)
 			block = TCP_RECV_SIZE;
 
-		res = net_read(s, p, block);
+		res = tls_recv(s, p, block);
 
 		if (res == -EAGAIN)
 		{
@@ -278,7 +279,7 @@ static u32 tcp_write(const s32 s, const u8 *buffer, const u32 length)
 		if (block > TCP_SEND_SIZE)
 			block = TCP_SEND_SIZE;
 
-		res = net_write(s, p, block);
+		res = tls_send(s, p, block);
 
 		if ((res == 0) || (res == -56))
 		{
@@ -317,6 +318,7 @@ static u32 http_request(char *url, FILE *hfile, char *buffer, u32 maxsize, bool 
 	URL_t *tmpurl;
 
 	u32 http_status = 404;
+	bool https = false;
 	u32 sizeread = 0, content_length = 0;
 
 	int linecount;
@@ -332,24 +334,35 @@ static u32 http_request(char *url, FILE *hfile, char *buffer, u32 maxsize, bool 
 	if (tmpurl == NULL)
 		return 0;
 
-	if(strlen(tmpurl->hostname) >= 1024 || strlen(tmpurl->file) >= 1024)
+	if(strlen(tmpurl->hostname) >= 1024 || strlen(tmpurl->file) >= 2048)
 	{
 		url_free(tmpurl);
 		return 0;
 	}
 	http_host = (char*) malloc(1024);
-	http_path = (char*) malloc(1024);
+	http_path = (char*) malloc(2048);
 
 	strcpy(http_host, tmpurl->hostname);
 	strcpy(http_path, tmpurl->file);
 	http_port = tmpurl->port;
 
+	https = !strcasecmp(tmpurl->protocol, "https");
 	if(http_port == 0)
-		http_port = 80;
+		http_port = https ? 443 : 80;
 
 	url_free(tmpurl);
 
 	int s = tcp_connect(http_host, http_port);
+
+	if (s >= 0)
+	{
+		tls_close(s); // fd reutilizado
+		if (https && tls_connect(s, http_host) < 0)
+		{
+			tls_close(s), net_close(s);
+			s = -1;
+		}
+	}
 
 	if (s < 0)
 	{
@@ -360,7 +373,7 @@ static u32 http_request(char *url, FILE *hfile, char *buffer, u32 maxsize, bool 
 	char *request = NULL;
 	char *r;
 
-	request = (char*) malloc(1024);
+	request = (char*) malloc(3584);
 	r = request;
 
 	r += sprintf(r, "GET %s HTTP/1.1\r\n", http_path);
@@ -376,7 +389,7 @@ static u32 http_request(char *url, FILE *hfile, char *buffer, u32 maxsize, bool 
 
 	if(res == 0) // can't send request to server
 	{
-		net_close(s);
+		tls_close(s), net_close(s);
 		return 0;
 	}
 
@@ -384,12 +397,12 @@ static u32 http_request(char *url, FILE *hfile, char *buffer, u32 maxsize, bool 
 	char *redirect = NULL;
 	char encoding[128] = { 0 };
 	bool chunked = false;
-	redirect = (char*) malloc(1024);
-	line = (char*) malloc(1055);
-	for (linecount = 0; linecount < 32; linecount++)
+	redirect = (char*) calloc(1, 2048);
+	line = (char*) malloc(4096);
+	for (linecount = 0; linecount < 64; linecount++)
 	{
-		memset(line,0,1055);
-		if (tcp_readln(s, line, 1054) != 0)
+		memset(line,0,4096);
+		if (tcp_readln(s, line, 4095) != 0)
 		{
 			http_status = 404;
 			break;
@@ -399,16 +412,18 @@ static u32 http_request(char *url, FILE *hfile, char *buffer, u32 maxsize, bool 
 
 		sscanf(line, "HTTP/1.%*u %u", &http_status);
 		sscanf(line, "Content-Length: %u", &content_length);
-		sscanf(line, "Location: %s", redirect);
+		if (!strncasecmp(line, "Location:", 9))
+			sscanf(line + 9, " %2047s", redirect);
 		sscanf(line, "Transfer-Encoding: %s", encoding);		
 	}
 
 	if (http_status != 200)
 	{
 		free(line);
-		net_close(s);
+		tls_close(s), net_close(s);
 
-		if((http_status == 301 || http_status == 302) && redirect[0] != 0 && total_redirects < 5)  //only 5 redirects allowed
+		if((http_status == 301 || http_status == 302 || http_status == 303 ||
+			http_status == 307 || http_status == 308) && is_http_url(redirect) && total_redirects < 5)  //only 5 redirects allowed
 		{
 			u32 ret = http_request(redirect, hfile, buffer, maxsize, silent, total_redirects+1);
 			free(redirect);
@@ -426,7 +441,7 @@ static u32 http_request(char *url, FILE *hfile, char *buffer, u32 maxsize, bool 
 	else if (content_length > maxsize)
 	{
 		free(line);
-		net_close(s);
+		tls_close(s), net_close(s);
 		return 0;
 	}
 
@@ -441,11 +456,11 @@ static u32 http_request(char *url, FILE *hfile, char *buffer, u32 maxsize, bool 
 			u32 ret;
 			do
 			{
-				if (tcp_readln(s, line, 1054) != 0) // read chunk size
+				if (tcp_readln(s, line, 4095) != 0) // read chunk size
 				{
 					http_status = 404;
 					free(line);
-					net_close(s);
+					tls_close(s), net_close(s);
 					return sizeread;
 				}
 
@@ -460,11 +475,11 @@ static u32 http_request(char *url, FILE *hfile, char *buffer, u32 maxsize, bool 
 					if(ret<=0) break;
 					sizeread += ret;
 				}
-				if (tcp_readln(s, line, 1054) != 0)  // read \r\n (chunk boundary)
+				if (tcp_readln(s, line, 4095) != 0)  // read \r\n (chunk boundary)
 				{
 					http_status = 404;
 					free(line);
-					net_close(s);
+					tls_close(s), net_close(s);
 					return sizeread;
 				}
 			} while(content_length > 0);
@@ -518,7 +533,7 @@ static u32 http_request(char *url, FILE *hfile, char *buffer, u32 maxsize, bool 
 			CancelAction();
 	}
 
-	net_close(s);
+	tls_close(s), net_close(s);
 
 	if (content_length < maxsize && sizeread != content_length)
 	{

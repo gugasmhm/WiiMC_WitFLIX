@@ -115,6 +115,9 @@ connect2Server_with_af(char *host, int port, int af,int verb) {
 #endif
 
 	socket_server_fd = socket(af, SOCK_STREAM, 0);
+#ifdef GEKKO
+	tls_close(socket_server_fd); // descarta estado de um fd reutilizado
+#endif
 
 
 	if( socket_server_fd==-1 ) {

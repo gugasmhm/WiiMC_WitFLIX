@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <app version="1">
-  <name>WiiMC</name>
-  <coder>Tantric, rodries</coder>
-  <version>1.3.4</version>
-  <release_date>20131123</release_date>
-  <short_description>Wii Media Player</short_description>
-  <long_description>Homebrew media player for Nintendo Wii.</long_description>
+  <name>WitFLIX</name>
+  <coder>Tantric, rodries; mod WitFLIX</coder>
+  <version>1.3.4-wf1</version>
+  <release_date>20261126</release_date>
+  <short_description>Cinema no Wii (baseado no WiiMC)</short_description>
+  <long_description>WitFLIX: versao modificada do WiiMC, com suporte inicial a HTTPS. WiiMC por Tantric e rodries. Licenca GPL.</long_description>
   <no_ios_reload/>
 </app>

@@ -209,7 +209,7 @@ http_send_request( URL_t *url, off_t pos ) {
 		server_url = url;
 		http_set_uri( http_hdr, server_url->file );
 	}
-	if (server_url->port && server_url->port != 80)
+	if (server_url->port && server_url->port != (!strcasecmp(server_url->protocol, "https") ? 443 : 80))
 	    snprintf(str, sizeof(str), "Host: %s:%d", server_url->hostname, server_url->port );
 	else
 	    snprintf(str, sizeof(str), "Host: %s", server_url->hostname );
@@ -268,8 +268,15 @@ http_send_request( URL_t *url, off_t pos ) {
 		url_free( server_url );
 		server_url = NULL;
 	} else {
-		if( server_url->port==0 ) server_url->port = 80;	// Default port for the web server
+		int https = !strcasecmp(server_url->protocol, "https");
+		if( server_url->port==0 ) server_url->port = https ? 443 : 80;	// Default port for the web server
 		fd = connect2Server( server_url->hostname, server_url->port,1 );
+#ifdef GEKKO
+		if( https && fd>=0 && tls_connect(fd, server_url->hostname) < 0 ) {
+			mp_msg(MSGT_NETWORK,MSGL_ERR,"HTTPS handshake failed\n");
+			goto err_out;
+		}
+#endif
 	}
 	if( fd<0 ) {
 		goto err_out;

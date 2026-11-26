@@ -281,6 +281,7 @@ static int nop_streaming_start( stream_t *stream ) {
 			case 302: // Temporarily
 			case 303: // See Other
 			case 307: // Temporarily (since HTTP/1.1)
+			case 308:
 				ret=-1;
 				next_url = http_get_field( http_hdr, "Location" );
 
@@ -754,6 +755,7 @@ static void print_icy_metadata(HTTP_header_t *http_hdr) {
 
 //! If this function succeeds you must closesocket stream->fd
 static int http_streaming_start(stream_t *stream, int* file_format) {
+	int redirect_count = 0;
 	HTTP_header_t *http_hdr = NULL;
 	int fd = stream->fd;
 	int res = STREAM_UNSUPPORTED;
@@ -868,6 +870,11 @@ static int http_streaming_start(stream_t *stream, int* file_format) {
 			case 302: // Temporarily
 			case 303: // See Other
 			case 307: // Temporarily (since HTTP/1.1)
+			case 308:
+				if (++redirect_count > 10) {
+					mp_msg(MSGT_NETWORK,MSGL_ERR,"Too many redirects\n");
+					goto err_out;
+				}
 				// TODO: RFC 2616, recommand to detect infinite redirection loops
 				next_url = http_get_field( http_hdr, "Location" );
 				if( next_url!=NULL ) {
@@ -877,7 +884,7 @@ static int http_streaming_start(stream_t *stream, int* file_format) {
 						res = STREAM_REDIRECTED;
 						goto err_out;
 					}
-					if (strcasecmp(url->protocol, "http")) {
+					if (strcasecmp(url->protocol, "http") && strcasecmp(url->protocol, "https")) {
 						mp_msg(MSGT_NETWORK,MSGL_ERR,"Unsupported http %d redirect to %s protocol\n", http_hdr->status_code, url->protocol);
 						goto err_out;
 					}
@@ -1000,7 +1007,7 @@ const stream_info_t stream_info_http1 = {
   "Bertrand, Albeau, Reimar Doeffinger, Arpi?",
   "plain http",
   open_s1,
-  {"http", "http_proxy", "unsv", "icyx", "noicyx", NULL},
+  {"http", "https", "http_proxy", "unsv", "icyx", "noicyx", NULL},
   NULL,
   0 // Urls are an option string
 };
@@ -1011,7 +1018,7 @@ const stream_info_t stream_info_http2 = {
   "Bertrand, Albeu, Arpi? who?",
   "plain http, also used as fallback for many other protocols",
   open_s2,
-  {"http", "http_proxy", "pnm", "mms", "mmsu", "mmst", "rtsp", NULL},	//all the others as fallback
+  {"http", "https", "http_proxy", "pnm", "mms", "mmsu", "mmst", "rtsp", NULL},	//all the others as fallback
   NULL,
   0 // Urls are an option string
 };
