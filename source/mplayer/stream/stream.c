@@ -84,6 +84,8 @@ extern const stream_info_t stream_info_ifo;
 extern const stream_info_t stream_info_dvd;
 extern const stream_info_t stream_info_bluray;
 
+extern const stream_info_t stream_info_hls;
+
 static const stream_info_t* const auto_open_streams[] = {
   &stream_info_bd,
 #ifdef CONFIG_VCD
@@ -96,6 +98,7 @@ static const stream_info_t* const auto_open_streams[] = {
   #if !defined(GEKKO)
   &stream_info_netstream,
   #endif
+  &stream_info_hls,
   &stream_info_http1,
   &stream_info_asf,
   &stream_info_pnm,

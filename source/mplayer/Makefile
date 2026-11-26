@@ -194,6 +194,8 @@ SRCS_COMMON-$(NETWORKING)            += stream/stream_netstream.c \
                                         stream/asf_streaming.c \
                                         stream/cookies.c \
                                         stream/http.c \
+                                        stream/hls_core.c \
+                                        stream/stream_hls.c \
                                         stream/network.c \
                                         stream/pnm.c \
                                         stream/rtp.c \

@@ -16,6 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "../utils/tls.h"
 #include "config.h"
 
 #include <errno.h>
@@ -4331,7 +4332,7 @@ if (mpctx->sh_video)
 	stream_cache_min_percent=orig_stream_cache_min_percent;
 	stream_cache_seek_min_percent=orig_stream_cache_seek_min_percent;
 
-	if(strncmp(fileplaying,"http:",5) == 0 || strncmp(fileplaying,"mms:",4) == 0)
+	if(is_http_url(fileplaying) || strncmp(fileplaying,"mms:",4) == 0)
 	{
 		stream_cache_min_percent=online_stream_cache_min_percent;
 		stream_cache_seek_min_percent=5;
@@ -5781,7 +5782,7 @@ void wiiSetCacheFill(int fill)
 	orig_stream_cache_min_percent = fill;
 
 	// only change fill for local streams
-	if(filename && strncmp(filename,"http:",5) != 0 && strncmp(filename,"mms:",5) != 0)
+	if(filename && !is_http_url(filename) && strncmp(filename,"mms:",5) != 0)
 		stream_cache_min_percent = fill;
 }
 
@@ -5836,7 +5837,7 @@ void wiiSetOnlineCacheFill(int fill)
 	online_stream_cache_min_percent = fill;
 
 	// only change fill for online streams
-	if(filename && (strncmp(filename,"http:",5) == 0 || strncmp(filename,"mms:",5) == 0))
+	if(filename && (is_http_url(filename) || strncmp(filename,"mms:",5) == 0))
 		stream_cache_min_percent = fill;
 }
 

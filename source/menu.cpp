@@ -6,6 +6,7 @@
  * Menu flow routines - handles all menu logic
  ***************************************************************************/
 
+extern "C" int wiiIsHlsUrl(const char *url);
 #include "utils/tls.h"
 #include <gccore.h>
 #include <ogcsys.h>
@@ -3834,7 +3835,7 @@ static void MenuBrowse(int menu)
 
 				// identified as a playlist, or file is an unrecognized audio or video extension or allowed protocol
 				// parse as a playlist
-				if(!IsAllowedExt(ext) && 
+				if(!IsAllowedExt(ext) && !(is_http_url(browser.selIndex->file) && wiiIsHlsUrl(browser.selIndex->file)) &&
 					(browser.selIndex->type == TYPE_PLAYLIST ||
 					IsPlaylistExt(ext) || 
 					!IsAllowedProtocol(browser.selIndex->file) || 

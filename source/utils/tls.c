@@ -65,6 +65,43 @@ typedef struct
 } tls_slot;
 
 static tls_slot slots[TLS_SLOTS];
+
+/* sessoes recentes por servidor, para retomada */
+#define TLS_SESSIONS 4
+static struct
+{
+	char host[128];
+	int valid;
+	mbedtls_ssl_session session;
+} sessions[TLS_SESSIONS];
+static int next_session = 0;
+
+/* chamada com o mutex travado */
+static int find_session(const char *host)
+{
+	int i;
+	for (i = 0; i < TLS_SESSIONS; i++)
+		if (sessions[i].valid && !strcmp(sessions[i].host, host))
+			return i;
+	return -1;
+}
+
+/* guarda a sessao; retorna 1 se o servidor ainda nao era conhecido */
+static int keep_session(mbedtls_ssl_context *ssl, const char *host)
+{
+	int i = find_session(host), is_new = i < 0;
+	if (strlen(host) >= sizeof(sessions[0].host)) return 1;
+	if (is_new)
+	{
+		i = next_session;
+		next_session = (next_session + 1) % TLS_SESSIONS;
+	}
+	if (sessions[i].valid) mbedtls_ssl_session_free(&sessions[i].session);
+	mbedtls_ssl_session_init(&sessions[i].session);
+	sessions[i].valid = mbedtls_ssl_get_session(ssl, &sessions[i].session) == 0;
+	strcpy(sessions[i].host, host);
+	return is_new;
+}
 static mbedtls_ssl_config conf;
 static mbedtls_x509_crt ca;
 static mbedtls_entropy_context entropy;
@@ -228,6 +265,8 @@ int tls_connect(int fd, const char *host)
 		goto out_free;
 	}
 	mbedtls_ssl_set_bio(&s->ssl, s, bio_send, bio_recv, NULL);
+	i = find_session(host);
+	if (i >= 0) mbedtls_ssl_set_session(&s->ssl, &sessions[i].session);
 
 	start = now_ms();
 	while ((ret = mbedtls_ssl_handshake(&s->ssl)) != 0)
@@ -248,8 +287,10 @@ int tls_connect(int fd, const char *host)
 	}
 
 	s->used = 1;
-	tls_log("conectado %s %s %s", host, mbedtls_ssl_get_version(&s->ssl),
-			mbedtls_ssl_get_ciphersuite(&s->ssl));
+	/* registrar so a primeira vez: gravar no SD durante o video atrapalha */
+	if (keep_session(&s->ssl, host))
+		tls_log("conectado %s %s %s", host, mbedtls_ssl_get_version(&s->ssl),
+				mbedtls_ssl_get_ciphersuite(&s->ssl));
 	unlock();
 	return 0;
 
