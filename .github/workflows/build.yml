@@ -1,76 +1,14 @@
-name: WiiMC Build
-
-on: [push, pull_request]
-
+name: Probe
+on: [push]
 jobs:
-  build:
-    name: Build
+  probe:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        image: ["Wii"]
     container: ghcr.io/extremscorner/libogc2:latest
-
     steps:
-    - name: Checkout wiimc repo
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Build Wii
-      if: ${{ matrix.image == 'Wii' }}
-      run: |
-        make -f Makefile -j1
-
-    - name: Copy Wii artifacts
-      if: ${{ matrix.image == 'Wii' }}
-      run: |
-        mkdir -p dist/WiiMC/apps/wiimc
-        cp hbc/* dist/WiiMC/apps/wiimc/
-        cp executables/wiimc.dol dist/WiiMC/apps/wiimc/boot.dol
-
-    - name: Upload Wii artifacts
-      uses: actions/upload-artifact@v4
-      if: ${{ matrix.image == 'Wii' }}
-      with:
-        name: WiiMC
-        path: |
-          dist/WiiMC/
-
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/master'
-
-    steps:
-    - name: Checkout wiimc repo
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Download Artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: dist
-
-    - name: Re-zip artifacts
-      run: |
-        cd dist
-        cd WiiMC
-        zip -r ../WiiMC.zip *
-
-    - name: Update Git Tag
-      run: |
-        git tag -f Pre-release
-        git push -f origin Pre-release
-
-    - name: Create Release
-      uses: ncipollo/release-action@v1
-      with:
-        prerelease: true
-        allowUpdates: true
-        removeArtifacts: true
-        replacesArtifacts: false
-        tag: Pre-release
-        artifacts: "dist/*.zip"
+    - run: |
+        echo $DEVKITPRO
+        ls $DEVKITPRO $DEVKITPRO/portlibs/* $DEVKITPRO/portlibs/*/lib $DEVKITPRO/portlibs/*/include $DEVKITPRO/libogc2/include $DEVKITPRO/libogc2/lib/wii || true
+        (dkp-pacman -Q || pacman -Q) 2>/dev/null || true
+        (dkp-pacman -Ss tls || pacman -Ss tls) 2>/dev/null || true
+        find $DEVKITPRO -iname '*mbedtls*' -o -iname '*wolfssl*' | head -30
+        grep -rnE 'net_recv|net_send|net_gethostbyname|ES_|TRNG|STM_|gettime' $DEVKITPRO/libogc2/include/network.h | head
