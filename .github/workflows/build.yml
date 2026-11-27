@@ -1,46 +1,20 @@
-name: Versoes de teste
+name: Sonda paired singles
 on:
   push:
     branches: [debug-crash]
 jobs:
-  teste:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - nome: TESTE1-original
-            rev: "6910363"
-            libogc: ""
-          - nome: TESTE2-bibliotecas-anteriores
-            rev: "d890176"
-            libogc: "dbd25ea4be4d1f34138ce37129be6d84031bc06f"
-    name: ${{ matrix.nome }}
+  sonda:
     runs-on: ubuntu-latest
     container: ghcr.io/extremscorner/libogc2:latest
     steps:
-    - uses: actions/checkout@v5
-      with:
-        fetch-depth: 0
-    - if: matrix.libogc != ''
-      run: |
-        git init -q /tmp/libogc2 && cd /tmp/libogc2
-        git fetch -q --depth=1 https://github.com/extremscorner/libogc2 ${{ matrix.libogc }}
-        git checkout -q FETCH_HEAD
-        make >log 2>&1 || { grep -m20 -i error log; tail -30 log; exit 1; }
-        make install >log 2>&1 || { tail -30 log; exit 1; }
-        echo LIBOGC instalada ${{ matrix.libogc }}
     - run: |
-        git config --global --add safe.directory "$PWD"
-        git checkout -q ${{ matrix.rev }}
-        if [ "${{ matrix.rev }}" = 6910363 ]; then
-          # so a correcao do travamento de rede, para dar para navegar ate o video
-          git -c user.name=ci -c user.email=ci@local cherry-pick 10a5acd bcbbaa9
-        fi
-        make -f Makefile -j2 >build.log 2>&1 || { grep -m20 -iE 'error' build.log; tail -20 build.log; exit 1; }
-        mkdir -p dist/apps/wiimc
-        cp hbc/* dist/apps/wiimc/
-        cp executables/wiimc.dol dist/apps/wiimc/boot.dol
-    - uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.nome }}
-        path: dist/
+        CC=$DEVKITPPC/bin/powerpc-eabi-gcc
+        $CC --version | head -1
+        printf '%s\n' 'typedef float v __attribute__((vector_size(8)));' 'v f(v a, v b, v c){ return __builtin_paired_madds0(a,b,c); }' > /tmp/p.c
+        for flags in "-mcpu=750 -mpaired" "-mcpu=750 -mrvl -mpaired" "-mcpu=gekko" "-mcpu=broadway"; do
+          echo "SONDA [$flags]"
+          $CC $flags -mhard-float -O2 -S /tmp/p.c -o /tmp/p.s 2>&1 | head -3 | sed 's/^/SONDA   /'
+          grep -E 'ps_|bl ' /tmp/p.s 2>/dev/null | head -3 | sed 's/^/SONDA   asm /'; rm -f /tmp/p.s
+        done
+        find $DEVKITPPC -name paired.h | sed 's/^/SONDA header /'
+        $CC -mcpu=750 -mrvl -dM -E - </dev/null | grep -iE 'paired|gekko|broadway|HW_' | sed 's/^/SONDA def /'
