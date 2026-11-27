@@ -1,20 +1,17 @@
-name: Sonda paired singles
+name: Sonda compiladores antigos
 on:
   push:
     branches: [debug-crash]
 jobs:
   sonda:
     runs-on: ubuntu-latest
-    container: ghcr.io/extremscorner/libogc2:latest
     steps:
     - run: |
-        CC=$DEVKITPPC/bin/powerpc-eabi-gcc
-        $CC --version | head -1
-        printf '%s\n' 'typedef float v __attribute__((vector_size(8)));' 'v f(v a, v b, v c){ return __builtin_paired_madds0(a,b,c); }' > /tmp/p.c
-        for flags in "-mcpu=750 -mpaired" "-mcpu=750 -mrvl -mpaired" "-mcpu=gekko" "-mcpu=broadway"; do
-          echo "SONDA [$flags]"
-          $CC $flags -mhard-float -O2 -S /tmp/p.c -o /tmp/p.s 2>&1 | head -3 | sed 's/^/SONDA   /'
-          grep -E 'ps_|bl ' /tmp/p.s 2>/dev/null | head -3 | sed 's/^/SONDA   asm /'; rm -f /tmp/p.s
+        curl -s 'https://hub.docker.com/v2/repositories/devkitpro/devkitppc/tags?page_size=100' | jq -r '.results[].name' > tags.txt
+        echo "SONDA tags: $(tr '\n' ' ' < tags.txt)"
+        printf '%s\n' '#include <paired.h>' 'typedef float v __attribute__((vector_size(8)));' 'v f(v a, v b, v c){ return __builtin_paired_madds0(a,b,c); }' > p.c
+        for t in $(grep -E '^(2018|2019|2020)' tags.txt | sort | head -12); do
+          docker pull -q devkitpro/devkitppc:$t >/dev/null || continue
+          docker run --rm -v $PWD:/w -w /w devkitpro/devkitppc:$t sh -c 'CC=/opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc; V=$($CC -dumpversion); if $CC -mcpu=750 -meabi -mrvl -mpaired -O2 -S p.c -o - 2>err | grep -q ps_madds0; then echo "SONDA OK gcc $V"; else echo "SONDA NAO gcc $V: $(head -1 err)"; fi' 2>&1 | sed "s/SONDA/SONDA $t/"
+          docker rmi -f devkitpro/devkitppc:$t >/dev/null 2>&1
         done
-        find $DEVKITPPC -name paired.h | sed 's/^/SONDA header /'
-        $CC -mcpu=750 -mrvl -dM -E - </dev/null | grep -iE 'paired|gekko|broadway|HW_' | sed 's/^/SONDA def /'
