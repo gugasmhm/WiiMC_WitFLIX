@@ -1,76 +1,23 @@
-name: WiiMC Build
-
-on: [push, pull_request]
-
+name: Debug crash
+on:
+  push:
+    branches: [debug-crash]
 jobs:
-  build:
-    name: Build
-    runs-on: ubuntu-latest
+  sym:
     strategy:
       matrix:
-        image: ["Wii"]
-    container: ghcr.io/extremscorner/libogc2:latest
-
-    steps:
-    - name: Checkout wiimc repo
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Build Wii
-      if: ${{ matrix.image == 'Wii' }}
-      run: |
-        make -f Makefile -j1
-
-    - name: Copy Wii artifacts
-      if: ${{ matrix.image == 'Wii' }}
-      run: |
-        mkdir -p dist/WiiMC/apps/wiimc
-        cp hbc/* dist/WiiMC/apps/wiimc/
-        cp executables/wiimc.dol dist/WiiMC/apps/wiimc/boot.dol
-
-    - name: Upload Wii artifacts
-      uses: actions/upload-artifact@v4
-      if: ${{ matrix.image == 'Wii' }}
-      with:
-        name: WiiMC
-        path: |
-          dist/WiiMC/
-
-  release:
-    name: Release
+        rev: [4ab59ac, 4e07d94]
     runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/master'
-
+    container: ghcr.io/extremscorner/libogc2:latest
     steps:
-    - name: Checkout wiimc repo
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
-
-    - name: Download Artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: dist
-
-    - name: Re-zip artifacts
-      run: |
-        cd dist
-        cd WiiMC
-        zip -r ../WiiMC.zip *
-
-    - name: Update Git Tag
-      run: |
-        git tag -f Pre-release
-        git push -f origin Pre-release
-
-    - name: Create Release
-      uses: ncipollo/release-action@v1
-      with:
-        prerelease: true
-        allowUpdates: true
-        removeArtifacts: true
-        replacesArtifacts: false
-        tag: Pre-release
-        artifacts: "dist/*.zip"
+    - run: |
+        git config --global --add safe.directory "$PWD"
+        git checkout -q ${{ matrix.rev }}
+        make -f Makefile -j2 >build.log 2>&1 || { tail -30 build.log; exit 1; }
+        elf=$(find . -name 'wiimc.elf' | head -1)
+        echo "ELF=$elf"
+        $DEVKITPPC/bin/powerpc-eabi-addr2line -afipC -e $elf 8077156c 8076801c 8006266c 80026ba4 8001eab8 80044594 800461cc 8001d4d0 8001da80
+        $DEVKITPPC/bin/powerpc-eabi-nm -nC $elf | awk '$1<="8077156c"{a=$0} END{print "antes:",a}'
