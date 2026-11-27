@@ -12,7 +12,7 @@ jobs:
         fetch-depth: 0
     - run: |
         git config --global --add safe.directory "$PWD"
-        git checkout -q 18b62a8
+        git checkout -q bcbbaa9
         make -f Makefile -j2 >build.log 2>&1 || { tail -30 build.log; exit 1; }
         $DEVKITPPC/bin/powerpc-eabi-objdump -d executables/wiimc.elf |
-          awk '/^[0-9a-f]+ <.*>:$/{f=$2} /\tbl? / && /mspace_malloc/{print "CHAMADA", f, $NF}'
+          awk '/^[0-9a-f]+ <.*>:$/{f=$2} /\tbl? / && /(create_mspace_with_base|__wrap_mspace_malloc)/{print "CHAMADA", f, $NF}'
