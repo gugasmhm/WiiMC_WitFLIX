@@ -1,18 +1,46 @@
-name: Debug crash
+name: Versoes de teste
 on:
   push:
     branches: [debug-crash]
 jobs:
-  sym:
+  teste:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nome: TESTE1-original
+            rev: "6910363"
+            libogc: ""
+          - nome: TESTE2-bibliotecas-anteriores
+            rev: "d890176"
+            libogc: "dbd25ea4be4d1f34138ce37129be6d84031bc06f"
+    name: ${{ matrix.nome }}
     runs-on: ubuntu-latest
     container: ghcr.io/extremscorner/libogc2:latest
     steps:
     - uses: actions/checkout@v5
       with:
         fetch-depth: 0
+    - if: matrix.libogc != ''
+      run: |
+        git init -q /tmp/libogc2 && cd /tmp/libogc2
+        git fetch -q --depth=1 https://github.com/extremscorner/libogc2 ${{ matrix.libogc }}
+        git checkout -q FETCH_HEAD
+        make >log 2>&1 || { grep -m20 -i error log; tail -30 log; exit 1; }
+        make install >log 2>&1 || { tail -30 log; exit 1; }
+        echo LIBOGC instalada ${{ matrix.libogc }}
     - run: |
         git config --global --add safe.directory "$PWD"
-        git checkout -q bcbbaa9
-        make -f Makefile -j2 >build.log 2>&1 || { tail -30 build.log; exit 1; }
-        $DEVKITPPC/bin/powerpc-eabi-addr2line -afipC -e executables/wiimc.elf 8074c104 8001db6c 80044594 800461cc 8001d4d0 8074a0bc 8074a030 | sed 's/^/SYM /'
-        $DEVKITPPC/bin/powerpc-eabi-objdump -d --start-address=0x8001db00 --stop-address=0x8001db80 executables/wiimc.elf | sed 's/^/ASM /'
+        git checkout -q ${{ matrix.rev }}
+        if [ "${{ matrix.rev }}" = 6910363 ]; then
+          # so a correcao do travamento de rede, para dar para navegar ate o video
+          git -c user.name=ci -c user.email=ci@local cherry-pick 10a5acd bcbbaa9
+        fi
+        make -f Makefile -j2 >build.log 2>&1 || { grep -m20 -iE 'error' build.log; tail -20 build.log; exit 1; }
+        mkdir -p dist/apps/wiimc
+        cp hbc/* dist/apps/wiimc/
+        cp executables/wiimc.dol dist/apps/wiimc/boot.dol
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.nome }}
+        path: dist/
