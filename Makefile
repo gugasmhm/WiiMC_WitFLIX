@@ -39,7 +39,7 @@ CXXFLAGS	=	$(CFLAGS)
 LDFLAGS		=	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
 LDFLAGS		+=	-L../buildtools
 # ver source/utils/netfix.c
-LDFLAGS		+=	-Wl,--wrap=mspace_malloc
+LDFLAGS		+=	-Wl,--wrap=mspace_malloc,--wrap=create_mspace_with_base
 
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project

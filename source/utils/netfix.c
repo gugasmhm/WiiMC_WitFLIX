@@ -9,15 +9,29 @@
  * defeito não aparece.
  *
  * Com 32 bytes de folga, nenhuma linha do buffer alcança o cabeçalho vizinho.
- * Ligado com -Wl,--wrap=mspace_malloc (ver Makefile).
+ * Vale só para o heap de rede: o malloc geral também passa por mspace_malloc.
+ * Ligado com -Wl,--wrap (ver Makefile).
  ***************************************************************************/
 #include <stddef.h>
 
+#define NET_HEAP_SIZE (64 * 1024) /* como em libogc2/libogc/network_wii.c */
+
+void *__real_create_mspace_with_base(void *base, size_t capacity, int locked);
 void *__real_mspace_malloc(void *msp, size_t bytes);
+
+static void *net_heap = NULL;
+
+void *__wrap_create_mspace_with_base(void *base, size_t capacity, int locked)
+{
+	void *msp = __real_create_mspace_with_base(base, capacity, locked);
+	if (capacity == NET_HEAP_SIZE)
+		net_heap = msp;
+	return msp;
+}
 
 void *__wrap_mspace_malloc(void *msp, size_t bytes)
 {
-	if (bytes > (size_t) -1 - 32)
-		return NULL;
-	return __real_mspace_malloc(msp, bytes + 32);
+	if (msp == net_heap && bytes <= NET_HEAP_SIZE)
+		bytes += 32;
+	return __real_mspace_malloc(msp, bytes);
 }
