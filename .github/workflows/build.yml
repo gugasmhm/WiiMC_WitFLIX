@@ -3,8 +3,27 @@ name: WiiMC Build
 on: [push, pull_request]
 
 jobs:
+  paired:
+    name: Paired singles (GCC antigo)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout wiimc repo
+      uses: actions/checkout@v4
+
+    - name: Build accelerated objects
+      run: |
+        docker run --rm -v "$PWD":/src -w /src devkitpro/devkitppc:20190212 bash tools/build-paired.sh
+
+    - name: Upload accelerated objects
+      uses: actions/upload-artifact@v4
+      with:
+        name: paired-objs
+        path: paired-objs.tar
+
   build:
     name: Build
+    needs: [paired]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -17,10 +36,31 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Download accelerated objects
+      uses: actions/download-artifact@v4
+      with:
+        name: paired-objs
+
+    - name: Unpack accelerated objects
+      run: |
+        tar -xf paired-objs.tar
+        tar -tf paired-objs.tar | xargs touch
+
     - name: Build Wii
       if: ${{ matrix.image == 'Wii' }}
       run: |
         make -f Makefile -j1
+
+    - name: Check acceleration is linked in
+      run: |
+        ELF=$(find . -name '*.elf' | head -1)
+        echo "ELF: $ELF"
+        $DEVKITPPC/bin/powerpc-eabi-nm "$ELF" | grep -E ' [Tt] .*(_paired|ff_h264_pred_init_ppc|ff_vc1dsp_init_ppc)' | head -40
+        n=$($DEVKITPPC/bin/powerpc-eabi-objdump -d "$ELF" | grep -cE '\s(ps_|psq_)')
+        echo "instrucoes paired singles no executavel: $n"
+        for f in ff_dsputil_init_paired ff_float_init_paired ff_fft_init_paired ff_mdct_calc_paired; do
+          $DEVKITPPC/bin/powerpc-eabi-nm "$ELF" | grep -q "$f" && echo "ok $f" || echo "AUSENTE $f"
+        done
 
     - name: Copy Wii artifacts
       if: ${{ matrix.image == 'Wii' }}
@@ -52,7 +92,8 @@ jobs:
     - name: Download Artifacts
       uses: actions/download-artifact@v4
       with:
-        path: dist
+        name: WiiMC
+        path: dist/WiiMC
 
     - name: Re-zip artifacts
       run: |
