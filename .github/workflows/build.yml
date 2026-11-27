@@ -3,7 +3,7 @@ on:
   push:
     branches: [debug-crash]
 jobs:
-  check:
+  sym:
     runs-on: ubuntu-latest
     container: ghcr.io/extremscorner/libogc2:latest
     steps:
@@ -14,5 +14,5 @@ jobs:
         git config --global --add safe.directory "$PWD"
         git checkout -q bcbbaa9
         make -f Makefile -j2 >build.log 2>&1 || { tail -30 build.log; exit 1; }
-        $DEVKITPPC/bin/powerpc-eabi-objdump -d executables/wiimc.elf |
-          awk '/^[0-9a-f]+ <.*>:$/{f=$2} /\tbl? / && /(create_mspace_with_base|__wrap_mspace_malloc)/{print "CHAMADA", f, $NF}'
+        $DEVKITPPC/bin/powerpc-eabi-addr2line -afipC -e executables/wiimc.elf 8074c104 8001db6c 80044594 800461cc 8001d4d0 8074a0bc 8074a030 | sed 's/^/SYM /'
+        $DEVKITPPC/bin/powerpc-eabi-objdump -d --start-address=0x8001db00 --stop-address=0x8001db80 executables/wiimc.elf | sed 's/^/ASM /'
