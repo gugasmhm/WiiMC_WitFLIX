@@ -38,6 +38,8 @@ CFLAGS		=	-g -O3 -Wall $(MACHDEP) $(INCLUDE) $(FREETYPE_CFLAGS) \
 CXXFLAGS	=	$(CFLAGS)
 LDFLAGS		=	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
 LDFLAGS		+=	-L../buildtools
+# ver source/utils/netfix.c
+LDFLAGS		+=	-Wl,--wrap=mspace_malloc
 
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
