@@ -2982,23 +2982,29 @@ static void *ThumbThread (void *arg)
 					//read = http_request("https://cdn-albums.tunein.com/gn/B3XTN3P0BRg.jpg", NULL, thumbBuffer, 200*1024, SILENT);
 
 					//if((isTunein || isYggdrasil || isAnisonFM || isCVGM) && !artFailed) {
+					// a lista pode ser apagada durante o download: trabalhar com copias
+					static char artImage[2048], artXml[2048];
+					bool hasXml = loadIndex->xml != NULL;
+					snprintf(artImage, sizeof(artImage), "%s", loadIndex->image);
+					snprintf(artXml, sizeof(artXml), "%s", hasXml ? loadIndex->xml : "");
+
 					if(isTunein || isYggdrasil || isAnisonFM || isCVGM) {
 						read = http_request(finalArt, NULL, thumbBuffer, 880*1024, SILENT);
 						// If art downloading fails fallback to xml image.
 						if(read < 1) {
-							read = loadIndex->image[0] == 'h' ? http_request(loadIndex->image, NULL, thumbBuffer, 880*1024, SILENT)
+							read = artImage[0] == 'h' ? http_request(artImage, NULL, thumbBuffer, 880*1024, SILENT)
 							//load from sd or usb
-							: LoadFile(thumbBuffer, 880*1024, loadIndex->image, SILENT);
+							: LoadFile(thumbBuffer, 880*1024, artImage, SILENT);
 						}
 					} else
-						read = loadIndex->image[0] == 'h' ? http_request(loadIndex->image, NULL, thumbBuffer, 880*1024, SILENT)
+						read = artImage[0] == 'h' ? http_request(artImage, NULL, thumbBuffer, 880*1024, SILENT)
 							//load from sd or usb
-							: LoadFile(thumbBuffer, 880*1024, loadIndex->image, SILENT);
+							: LoadFile(thumbBuffer, 880*1024, artImage, SILENT);
 					
 					// Reset flag
 					//artFailed = false;
 					
-					LoadThumbsFileHTTP(loadIndex->xml);
+					LoadThumbsFileHTTP(hasXml ? artXml : NULL);
 					
 					if (WiiSettings.numThumb > 0) {
 						sprintf(year_txt, "%s", WiiSettings.yearNum);
@@ -3011,10 +3017,6 @@ static void *ThumbThread (void *arg)
 							mem2_free(WiiSettings.yearNum, MEM2_DESC);
 						}
 					}
-					loadIndex->year = mem2_strdup(year_txt, MEM2_DESC);
-					loadIndex->desc = mem2_strdup(desc_txt, MEM2_DESC);
-					mem2_free(loadIndex->year, MEM2_DESC);
-					mem2_free(loadIndex->desc, MEM2_DESC);
 					secure_type = false;
 				} else if(!bannerSSactive && loadIndex->image && strncmp(loadIndex->image, "smb", 3) == 0) // SMB crashes
 					read = 0;
@@ -3070,12 +3072,8 @@ static void *ThumbThread (void *arg)
 						same_dir = false;
 						secure_type = true;
 					}
-					loadIndex->year = mem2_strdup(year_txt, MEM2_DESC);
-					loadIndex->desc = mem2_strdup(desc_txt, MEM2_DESC);
 					loadIndex->image = mem2_strdup(actual_path, MEM2_BROWSER);
 					read = LoadFile(thumbBuffer, 880*1024, actual_path, SILENT);
-					mem2_free(loadIndex->year, MEM2_DESC);
-					mem2_free(loadIndex->desc, MEM2_DESC);
 					//memset(art_disp,0,strlen(art_disp));
 					//memset(art_disp_2,0,strlen(art_disp_2));
 					//memset(actual_path,0,strlen(actual_path));
