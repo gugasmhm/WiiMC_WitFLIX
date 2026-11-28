@@ -143,11 +143,14 @@ static void vector_fmul_scalar_paired(float *dst, const float *src, float mul, i
 
 void ff_float_init_paired(DSPContext *c, AVCodecContext *avctx)
 {
+	c->vector_fmul_window = vector_fmul_window_paired;
+	c->butterflies_float = butterflies_float_paired;
+	/* WitFLIX: desligado, falha no teste do emulador (tools/emu/audio.c) */
+#if 0
 	c->vector_fmul = vector_fmul_paired;
 	c->vector_fmul_reverse = vector_fmul_reverse_paired;
 	c->vector_fmul_add = vector_fmul_add_paired;
-	c->vector_fmul_window = vector_fmul_window_paired;
-	c->butterflies_float = butterflies_float_paired;
 	c->scalarproduct_float = scalarproduct_float_paired;
 	c->vector_fmul_scalar = vector_fmul_scalar_paired;
+#endif
 }

@@ -192,6 +192,9 @@ void ff_dsputil_init_paired(DSPContext *c, AVCodecContext *avctx)
 	if (CONFIG_VORBIS_DECODER)
 		c->vorbis_inverse_coupling = vorbis_inverse_coupling_paired;
 	
+	/* WitFLIX: desligado, falha no teste do emulador (tools/emu/audio.c) */
+#if 0
 	if (CONFIG_AC3_DECODER)
 		c->ac3_downmix = ac3_downmix_paired;
+#endif
 }

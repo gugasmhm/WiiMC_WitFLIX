@@ -166,7 +166,8 @@ av_cold int ff_fft_init(FFTContext *s, int nbits, int inverse)
     if (CONFIG_MDCT)  s->mdct_calcw = ff_mdct_calcw_c;
     if (ARCH_ARM)     ff_fft_fixed_init_arm(s);
 #endif
-    if (HAVE_PAIRED)  ff_fft_init_paired(s);
+    /* WitFLIX: desligado, falha no teste do emulador (tools/emu/audio.c) */
+    if (0 && HAVE_PAIRED)  ff_fft_init_paired(s);
 
 
     for(j=4; j<=nbits; j++) {

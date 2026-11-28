@@ -63,9 +63,18 @@ jobs:
         $DEVKITPPC/bin/powerpc-eabi-nm "$ELF" | grep -E ' [Tt] .*(_paired|ff_h264_pred_init_ppc|ff_vc1dsp_init_ppc)' | head -40
         n=$($DEVKITPPC/bin/powerpc-eabi-objdump -d "$ELF" | grep -cE '\s(ps_|psq_)')
         echo "instrucoes paired singles no executavel: $n"
-        for f in ff_dsputil_init_paired ff_float_init_paired ff_fft_init_paired ff_imdct_half_paired witflix_put_h264_chroma_mc8 witflix_avg_h264_chroma_mc4; do
+        for f in ff_dsputil_init_paired ff_float_init_paired witflix_put_h264_chroma_mc8 witflix_avg_h264_chroma_mc4; do
           $DEVKITPPC/bin/powerpc-eabi-nm "$ELF" | grep -q "$f" && echo "ok $f" || echo "AUSENTE $f"
         done
+
+    - name: Build emulator test
+      run: make -C tools/emu audio.dol
+
+    - name: Upload emulator test
+      uses: actions/upload-artifact@v4
+      with:
+        name: emu-test
+        path: tools/emu/audio.dol
 
     - name: Copy Wii artifacts
       if: ${{ matrix.image == 'Wii' }}
@@ -81,6 +90,20 @@ jobs:
         name: WiiMC
         path: |
           dist/WiiMC/
+
+  emu:
+    name: Teste das rotinas no emulador
+    needs: [build]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
+      with:
+        name: emu-test
+    - run: |
+        sudo apt-get update -qq && sudo apt-get install -y -qq dolphin-emu > /dev/null
+        bash tools/emu/run.sh audio.dol 90
 
   release:
     name: Release

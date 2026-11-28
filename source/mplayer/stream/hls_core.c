@@ -409,6 +409,8 @@ int hls_read(hls_t *h, char *buf, int len)
 			h->stalled_ms = 0;
 			hls_resolve(url, h->media_base, h->seg[h->next_seq - h->first_seq]);
 			h->conn = h->io.open(url, final_url);
+			if (h->conn && h->noted >= 6 && h->next_seq % 5 == 0)
+				note(h, "diag: ainda baixando, pedaco %ld", (long) h->next_seq, 0, 0, 0, 0);
 			if (h->conn && h->noted < 6)
 				note(h, "diag pedaco aberto: endereco com %ld letras", (long) strlen(url), 0, 0, 0, 0);
 			if (!h->conn)

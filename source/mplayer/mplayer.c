@@ -18,6 +18,7 @@
 
 #include "../utils/tls.h"
 void wiiHlsDiag(const char *msg);
+#define HLS_MARK(m) do { if (filename && is_http_url(filename) && strstr(filename, ".m3u8")) wiiHlsDiag(m); } while (0)
 #include "config.h"
 
 #include <errno.h>
@@ -3915,9 +3916,11 @@ goto_enable_cache:
 #ifdef GEKKO
 stream_cache_min_percent=0.2;
 #endif
+        HLS_MARK("diag etapa: enchendo o cache");
         res = stream_enable_cache(mpctx->stream, stream_cache_size * 1024,
                                   stream_cache_size * 1024 * (stream_cache_min_percent / 100.0),
                                   stream_cache_size * 1024 * (stream_cache_seek_min_percent / 100.0));
+        HLS_MARK("diag etapa: cache pronto");
         if (res == 0)
             if ((mpctx->eof = libmpdemux_was_interrupted(PT_NEXT_ENTRY)))
                 goto goto_next_file;
@@ -3926,7 +3929,9 @@ stream_cache_min_percent=0.2;
 //============ Open DEMUXERS --- DETECT file type =======================
     current_module = "demux_open";
 
+    HLS_MARK("diag etapa: detectando o formato");
     mpctx->demuxer = demux_open(mpctx->stream, mpctx->file_format, audio_id, video_id, dvdsub_id, filename);
+    HLS_MARK(mpctx->demuxer ? "diag etapa: formato detectado" : "diag etapa: formato nao reconhecido");
 
     // HACK to get MOV Reference Files working
     if (mpctx->demuxer && mpctx->demuxer->type == DEMUXER_TYPE_PLAYLIST) {
