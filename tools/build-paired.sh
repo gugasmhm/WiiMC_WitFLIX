@@ -22,9 +22,9 @@ make $LIST \
 for o in $LIST; do
 	n=$("$DEVKITPPC/bin/powerpc-eabi-objdump" -d "$o" | grep -cE '\s(ps_|psq_)' || true)
 	echo "$o: $n instrucoes paired singles"
-	# fft_paired.c so registra as funcoes; os demais precisam ter instrucoes
+	# fft_paired.c so registra funcoes e a do binkdsp esta desligada
 	case "$o" in
-		*/fft_paired.o) ;;
+		*/fft_paired.o|*/binkdsp.o) ;;
 		*) [ "$n" -gt 0 ] || { echo "ERRO: $o sem aceleracao"; exit 1; } ;;
 	esac
 	rm -f "${o%.o}.d"
