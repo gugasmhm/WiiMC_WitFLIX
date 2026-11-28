@@ -3921,7 +3921,7 @@ stream_cache_min_percent=0.2;
         res = stream_enable_cache(mpctx->stream, stream_cache_size * 1024,
                                   stream_cache_size * 1024 * (stream_cache_min_percent / 100.0),
                                   stream_cache_size * 1024 * (stream_cache_seek_min_percent / 100.0));
-        HLS_MARK("diag etapa: cache pronto");
+        HLS_MARK(res == 1 ? "diag etapa: cache pronto" : "diag etapa: SEM cache");
         if (res == 0)
             if ((mpctx->eof = libmpdemux_was_interrupted(PT_NEXT_ENTRY)))
                 goto goto_next_file;

@@ -65,12 +65,12 @@ int sync_interlace = 0;
 int use_lavf = 0;
 
 // MPlayer buffer
-#define MPLAYER_BUFFER_SIZE (8*1024*1024)
+#include "utils/mplayer_buffer.h"
 unsigned char *global_buffer=NULL;
 
 // MPlayer threads
 #define MPLAYER_STACKSIZE (512*1024)
-#define CACHE_STACKSIZE (64*1024) // handshake TLS ao reconectar
+#define CACHE_STACKSIZE (128*1024) // o cache baixa o HLS e faz o handshake TLS
 static lwp_t mthread = LWP_THREAD_NULL;
 static lwp_t cthread = LWP_THREAD_NULL;
 static u8 cachestack[CACHE_STACKSIZE] ATTRIBUTE_ALIGN (32);
@@ -1135,7 +1135,7 @@ int main(int argc, char *argv[])
 	StartNetworkThread(); //to set net heap aside MEM2 area
 	usleep(100); //force network thread execution
 	
-	AddMem2Area (MPLAYER_BUFFER_SIZE, MEM2_MPLAYER_BUFFER);
+	AddMem2Area (MPLAYER_AREA_SIZE, MEM2_MPLAYER_BUFFER);
 	global_buffer = (unsigned char *)mem2_malloc(MPLAYER_BUFFER_SIZE, MEM2_MPLAYER_BUFFER);
 
 	u32 size = ( (1024*MAX_HEIGHT)+((MAX_WIDTH-1024)*MAX_HEIGHT) + (1024*(MAX_HEIGHT/2)*2) ) + // textures

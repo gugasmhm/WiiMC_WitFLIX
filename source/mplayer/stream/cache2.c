@@ -579,6 +579,13 @@ int stream_enable_cache(stream_t *stream,int size,int min,int seek_limit){
     LWP_MutexInit(&cache_mutex, false);	
 #endif
   s=cache_init(size,ss);
+#ifdef GEKKO
+  {
+    char msg[64];
+    snprintf(msg,sizeof(msg), s ? "diag cache: ligado, %d KB" : "diag cache: FALHOU ao criar (%d KB)", size/1024);
+    wiiHlsDiag(msg);
+  }
+#endif
   if(s == NULL) return -1;
   stream->cache_data=s;
   s->stream=stream; // callback

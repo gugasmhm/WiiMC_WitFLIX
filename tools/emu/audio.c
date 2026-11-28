@@ -4,6 +4,8 @@
 #include <string.h>
 #include "libavcodec/dsputil.h"
 #include "libavcodec/fft.h"
+#include "mem2_manager.h"
+#include "mplayer_buffer.h"
 void ff_float_init_paired(DSPContext *c, AVCodecContext *avctx);
 void ff_dsputil_init_paired(DSPContext *c, AVCodecContext *avctx);
 void ff_imdct_half_c(FFTContext *s, FFTSample *output, const FFTSample *input);
@@ -33,11 +35,28 @@ static void check(const char *name, int len, const float *a, const float *b, int
 #define ON(f) if (c.f)
 #define RESET() do { fill(r, N); memcpy(t, r, sizeof(r)); } while (0)
 
+/* O buffer do cache cabe na area reservada para ele? */
+static void check_cache_buffer(void)
+{
+	void *p;
+	/* area do mesmo tamanho do buffer: a alocacao nao cabe (o defeito antigo) */
+	AddMem2Area(MPLAYER_BUFFER_SIZE, MEM2_MPLAYER_BUFFER);
+	p = mem2_malloc(MPLAYER_BUFFER_SIZE, MEM2_MPLAYER_BUFFER);
+	SYS_Report("EMUTEST info area_justa buffer=%s\n", p ? "criado" : "NULO");
+	RemoveMem2Area(MEM2_MPLAYER_BUFFER);
+	AddMem2Area(MPLAYER_AREA_SIZE, MEM2_MPLAYER_BUFFER);
+	p = mem2_malloc(MPLAYER_BUFFER_SIZE, MEM2_MPLAYER_BUFFER);
+	if (p) memset(p, 0x5a, MPLAYER_BUFFER_SIZE);
+	SYS_Report("EMUTEST %s buffer_do_cache\n", p ? "ok" : "FALHOU");
+	RemoveMem2Area(MEM2_MPLAYER_BUFFER);
+}
+
 int main(void)
 {
 	static DSPContext c;
 	int len, i, j, k;
 
+	check_cache_buffer();
 	ff_dsputil_init_paired(&c, NULL);   /* tambem configura os GQR */
 	ff_float_init_paired(&c, NULL);
 	fill(s0, N); fill(s1, N); fill(s2, N);
