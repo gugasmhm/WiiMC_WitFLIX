@@ -33,6 +33,8 @@ static void io_close(void *h)
 	free(c);
 }
 
+static void io_log(const char *msg);
+
 static void *io_open(const char *url, char *final_url)
 {
 	char current[HLS_URL_MAX], next[HLS_URL_MAX];
