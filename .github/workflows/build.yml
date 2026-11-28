@@ -1,15 +1,12 @@
-name: tmp disasm
+name: tmp probe
 on: [push]
 jobs:
   d:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: ["20180522", "20190212"]
     steps:
     - uses: actions/checkout@v4
-    - run: |
-        cat > /tmp/d.sh <<'S'
-        bash tools/build-paired.sh >/dev/null
-        $DEVKITPPC/bin/powerpc-eabi-objdump -d -r -s -j .text -j .rodata -j .rodata.cst4 -j .rodata.cst8 -j .sdata2 source/mplayer/ffmpeg/libavcodec/ppc/h264dsp_paired.o > full.txt
-        $DEVKITPPC/bin/powerpc-eabi-objdump -s -j .rodata -j .rodata.cst4 -j .rodata.cst8 -j .sdata2 source/mplayer/ffmpeg/libavcodec/ppc/h264dsp_paired.o || true
-        $DEVKITPPC/bin/powerpc-eabi-objdump -d -r --no-show-raw-insn source/mplayer/ffmpeg/libavcodec/ppc/h264dsp_paired.o | awk '/^[0-9a-f]+ <.*>:$/{p=($0 ~ /h264_chroma_mc[48]_paired/)} p'
-        S
-        docker run --rm -v "$PWD":/src -v /tmp/d.sh:/d.sh -w /src devkitpro/devkitppc:20190212 bash /d.sh
+    - run: docker run --rm -v "$PWD":/src -w /src devkitpro/devkitppc:${{ matrix.tag }} bash tools/probe.sh
