@@ -27,6 +27,8 @@ struct hls
 	void *conn;
 	int errors;
 	int stalled_ms;
+	long seg_bytes;               /* diagnostico */
+	int noted;
 };
 
 void hls_resolve(char *out, const char *base, const char *ref)
@@ -296,6 +298,14 @@ static long long live_start(hls_t *h)
 	return h->first_seq + (h->nseg > LIVE_EDGE ? h->nseg - LIVE_EDGE : 0);
 }
 
+/* diagnostico: nunca registrar enderecos, so numeros */
+static void note(hls_t *h, const char *fmt, long a, long b, long c, long d, long e)
+{
+	char msg[128];
+	snprintf(msg, sizeof(msg), fmt, a, b, c, d, e);
+	h->io.log(msg);
+}
+
 int hls_open(hls_t **out, const char *url, const hls_io *io)
 {
 	hls_t *h = calloc(1, sizeof(*h));
@@ -315,6 +325,8 @@ int hls_open(hls_t **out, const char *url, const hls_io *io)
 	}
 	h->next_seq = h->endlist ? h->first_seq : live_start(h);
 	h->io.log(h->endlist ? "HLS: video gravado" : "HLS: ao vivo");
+	note(h, "diag playlist: %ld pedacos, alvo %ld ms, sequencia %ld, comeca em %ld",
+			h->nseg, h->target_ms, (long) h->first_seq, (long) h->next_seq, 0);
 	*out = h;
 	return HLS_OK;
 }
@@ -372,9 +384,20 @@ int hls_read(hls_t *h, char *buf, int len)
 			n = h->io.read(h->conn, buf, len);
 			if (n > 0)
 			{
+				if (h->seg_bytes == 0 && h->noted < 6 && n >= 4)
+					note(h, "diag pedaco inicio: %02lx %02lx %02lx %02lx (47 = MPEG-TS) %ld",
+							(unsigned char) buf[0], (unsigned char) buf[1],
+							(unsigned char) buf[2], (unsigned char) buf[3], 0);
+				h->seg_bytes += n;
 				h->errors = 0;
 				return n;
 			}
+			if (h->noted < 6)
+			{
+				h->noted++;
+				note(h, "diag pedaco fim: %ld bytes, retorno %ld", h->seg_bytes, n, 0, 0, 0);
+			}
+			h->seg_bytes = 0;
 			h->io.close(h->conn);
 			h->conn = NULL;
 			h->next_seq++;
@@ -386,6 +409,8 @@ int hls_read(hls_t *h, char *buf, int len)
 			h->stalled_ms = 0;
 			hls_resolve(url, h->media_base, h->seg[h->next_seq - h->first_seq]);
 			h->conn = h->io.open(url, final_url);
+			if (h->conn && h->noted < 6)
+				note(h, "diag pedaco aberto: endereco com %ld letras", (long) strlen(url), 0, 0, 0, 0);
 			if (!h->conn)
 			{
 				h->io.log("falha ao abrir um pedaco");
@@ -395,7 +420,7 @@ int hls_read(hls_t *h, char *buf, int len)
 			continue;
 		}
 
-		if (h->endlist) break;
+		if (h->endlist) { h->io.log("diag fim: lista terminou (ENDLIST)"); break; }
 
 		pause = h->target_ms / 2;
 		if (!wait_ms(h, pause)) break;
@@ -405,8 +430,10 @@ int hls_read(hls_t *h, char *buf, int len)
 			h->io.log("canal parado: sem pedacos novos");
 			break;
 		}
-		if (!reload(h)) break;
+		if (!reload(h)) { h->io.log("diag fim: recarregar a lista falhou"); break; }
 	}
+	note(h, "diag leitura encerrada: abortado=%ld, erros=%ld, proximo=%ld", h->io.aborted(),
+			h->errors, (long) h->next_seq, 0, 0);
 	return -1;
 }
 
