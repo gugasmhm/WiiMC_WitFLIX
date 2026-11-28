@@ -677,6 +677,9 @@ bool InitMPlayer()
 	return true;
 }
 
+extern "C" void wiiHlsDiag(const char *msg);
+#define HLS_STEP(m) do { if (strstr(loadedFile, ".m3u8")) wiiHlsDiag(m); } while (0)
+
 void LoadMPlayerFile()
 {
 	SuspendDeviceThread();
@@ -689,9 +692,11 @@ void LoadMPlayerFile()
 	controlledbygui = 2; // signal any previous file to end
 	sync_interlace = 0; // reset interlace-handling flag
 
+	HLS_STEP("diag carga: esperando o anterior terminar");
 	// wait for previous file to end
 	while(controlledbygui == 2)
 		usleep(100);
+	HLS_STEP("diag carga: anterior terminou");
 
 	char *partitionlabel;
 	char ext[7];
@@ -767,10 +772,12 @@ void LoadMPlayerFile()
 		usleep(100);
 	
 	// set new file to load
+	HLS_STEP("diag carga: entregando ao player");
 	wiiLoadFile(loadedFile, partitionlabel);
 
 	while(controlledbygui != 0)
 		usleep(100);
+	HLS_STEP("diag carga: player assumiu");
 }
 
 void ResumeMPlayerFile()

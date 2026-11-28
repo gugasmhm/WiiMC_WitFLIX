@@ -7,6 +7,7 @@
  ***************************************************************************/
 
 extern "C" int wiiIsHlsUrl(const char *url);
+extern "C" void wiiHlsDiag(const char *msg);
 #include "utils/tls.h"
 #include <gccore.h>
 #include <ogcsys.h>
@@ -3917,6 +3918,7 @@ static void MenuBrowse(int menu)
 				mainWindow->SetState(STATE_DISABLED);
 
 				ShowAction("Loading...");
+				if (strstr(loadedFile, ".m3u8")) wiiHlsDiag("diag menu: vai carregar");
 				int res = LoadNewFile();
 				CancelAction();
 

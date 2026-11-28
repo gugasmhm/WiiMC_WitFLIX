@@ -3802,6 +3802,7 @@ audio_delay=0;
   else
   	stream_cache_size=orig_stream_cache_size;
 #endif
+    HLS_MARK("diag etapa: abrindo o fluxo");
     mpctx->stream  = open_stream(filename, 0, &mpctx->file_format);
     if (!mpctx->stream) { // error...
         mpctx->eof = libmpdemux_was_interrupted(PT_NEXT_ENTRY);
