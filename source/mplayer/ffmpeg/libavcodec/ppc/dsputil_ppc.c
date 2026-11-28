@@ -258,7 +258,8 @@ void ff_dsputil_init_ppc(DSPContext* c, AVCodecContext *avctx)
     ff_dsputil_init_paired(c, avctx);
     ff_float_init_paired(c, avctx);
 
-    if (CONFIG_H264_DECODER)
+    /* WitFLIX: desligado, o GCC 8 copia os pares errado (imagem verde/rosa) */
+    if (0 && CONFIG_H264_DECODER)
         ff_dsputil_h264_init_ppc(c, avctx);
 #endif /* HAVE_PAIRED */
 }

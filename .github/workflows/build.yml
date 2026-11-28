@@ -58,7 +58,7 @@ jobs:
         $DEVKITPPC/bin/powerpc-eabi-nm "$ELF" | grep -E ' [Tt] .*(_paired|ff_h264_pred_init_ppc|ff_vc1dsp_init_ppc)' | head -40
         n=$($DEVKITPPC/bin/powerpc-eabi-objdump -d "$ELF" | grep -cE '\s(ps_|psq_)')
         echo "instrucoes paired singles no executavel: $n"
-        for f in ff_dsputil_init_paired ff_float_init_paired ff_fft_init_paired ff_mdct_calc_paired; do
+        for f in ff_dsputil_init_paired ff_float_init_paired ff_fft_init_paired ff_imdct_half_paired; do
           $DEVKITPPC/bin/powerpc-eabi-nm "$ELF" | grep -q "$f" && echo "ok $f" || echo "AUSENTE $f"
         done
 

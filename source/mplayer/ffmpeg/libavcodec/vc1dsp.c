@@ -848,7 +848,8 @@ av_cold void ff_vc1dsp_init(VC1DSPContext* dsp) {
 
     if (HAVE_ALTIVEC)
         ff_vc1dsp_init_altivec(dsp);
-    if (HAVE_PAIRED)
+    /* WitFLIX: desligado, o GCC 8 copia os pares errado (imagem verde/rosa) */
+    if (0 && HAVE_PAIRED)
         ff_vc1dsp_init_paired(dsp);
     if (HAVE_MMX)
         ff_vc1dsp_init_mmx(dsp);

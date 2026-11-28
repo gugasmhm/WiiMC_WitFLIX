@@ -182,9 +182,12 @@ void ff_dsputil_init_paired(DSPContext *c, AVCodecContext *avctx)
 		: "=r"(gqr)
 	);
 	
+	/* WitFLIX: desligado, o GCC 8 copia os pares errado (imagem verde/rosa) */
+#if 0
 	c->put_pixels_clamped = put_pixels_clamped_paired;
 	c->put_signed_pixels_clamped = put_signed_pixels_clamped_paired;
 	c->add_pixels_clamped = add_pixels_clamped_paired;
+#endif
 	
 	if (CONFIG_VORBIS_DECODER)
 		c->vorbis_inverse_coupling = vorbis_inverse_coupling_paired;
