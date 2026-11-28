@@ -4028,6 +4028,7 @@ stream_cache_min_percent=0.2;
     }
     // select audio stream
     select_audio(mpctx->demuxer, audio_id, audio_lang);
+    HLS_MARK("diag etapa: audio escolhido");
 
     // DUMP STREAMS:
     if ((stream_dump_type) && (stream_dump_type < 4)) {
@@ -4091,6 +4092,7 @@ stream_cache_min_percent=0.2;
 
     if (mpctx->sh_video) {
         current_module = "video_read_properties";
+        HLS_MARK("diag etapa: lendo propriedades do video");
         if (!video_read_properties(mpctx->sh_video)) {
             mp_msg(MSGT_CPLAYER, MSGL_ERR, MSGTR_CannotReadVideoProperties);
             mpctx->sh_video = mpctx->d_video->sh = NULL;

@@ -124,13 +124,20 @@ static void cache_flush(cache_vars_t *s)
 }
 
 extern int getMESS;
-extern int getWeird;
+extern int controlledbygui;
+void wiiHlsDiag(const char *msg);
+// tempo maximo sem receber nenhum dado antes de abandonar a leitura
+#define CACHE_STALL_MS 45000
 extern int waitReload;
 extern int cntReconnect;
 
 static int cache_read(cache_vars_t *s, unsigned char *buf, int size)
 {
   int total=0;
+#ifdef GEKKO
+  unsigned wait_start=0;
+  int waiting=0;
+#endif
   
   while(size>0 ){
     int pos,newb,len;
@@ -139,11 +146,6 @@ static int cache_read(cache_vars_t *s, unsigned char *buf, int size)
 		//getWeird = size; //2048
 		return 0;
 	}
-	if(getWeird > 80) { //assume no longer playing audio
-		getWeird = 0;
-		getMESS = 1; //forces 3 loops to exit, allowing mplayer to still work
-	}
-	++getWeird;
 	
   //printf("CACHE2_READ: 0x%X <= 0x%X <= 0x%X  \n",s->min_filepos,s->read_filepos,s->max_filepos);
 
@@ -152,7 +154,26 @@ static int cache_read(cache_vars_t *s, unsigned char *buf, int size)
 	if(s->eof) break;
 
 	// waiting for buffer fill...
+#ifdef GEKKO
+	if(!waiting) { waiting=1; wait_start=GetTimerMS(); }
+	else if(GetTimerMS()-wait_start > CACHE_STALL_MS) {
+		wiiHlsDiag("diag cache: sem dados por tempo demais, desistindo");
+		getMESS = 1;
+		break;
+	}
+	// o usuario pediu para parar ou trocar de video
+	// (so depois de 2 s: stream_check_interrupt descarta outras teclas)
+	if(controlledbygui == 2)
+		break;
+	if(GetTimerMS()-wait_start > 2000) {
+		if(stream_check_interrupt(READ_USLEEP_TIME/1000))
+			break;
+	}
+	else
+		usec_sleep(READ_USLEEP_TIME);
+#else
 	usec_sleep(READ_USLEEP_TIME); // 10ms
+#endif
 	continue; // try again...
     }	
     newb=s->max_filepos-s->read_filepos; // new bytes in the buffer
@@ -178,6 +199,19 @@ static int cache_read(cache_vars_t *s, unsigned char *buf, int size)
     	printf("Ehh. very very odd error !!! Report bug... pos: %i  newb: %i\n",pos,newb);
     	continue;
 	}
+#ifdef GEKKO
+	if(waiting) {
+		unsigned ms=GetTimerMS()-wait_start;
+		static int logged=0;
+		waiting=0;
+		if(ms>800 && logged<40) {
+			char msg[64];
+			snprintf(msg,sizeof(msg),"diag cache: esperou %u ms por dados",ms);
+			wiiHlsDiag(msg);
+			logged++;
+		}
+	}
+#endif
     memcpy(buf,&s->buffer[pos],newb);
     buf+=newb;
     len=newb;
@@ -189,8 +223,6 @@ static int cache_read(cache_vars_t *s, unsigned char *buf, int size)
 
   }
   
-  //reset
-  getWeird = 0;
   
 #ifndef GEKKO
   cache_fill_status=(s->max_filepos-s->read_filepos)/(s->buffer_size / 100);
@@ -586,6 +618,7 @@ int stream_enable_cache(stream_t *stream,int size,int min,int seek_limit){
 		//}
 	}
 	cachearg = s;
+	getMESS = 0;
 	stop_cache_thread = 0;
 	ResumeCacheThread();
 	stream->cache_pid = 1;
