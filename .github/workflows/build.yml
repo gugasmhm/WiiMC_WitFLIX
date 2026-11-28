@@ -11,6 +11,11 @@ jobs:
     - name: Checkout wiimc repo
       uses: actions/checkout@v4
 
+    - name: Test chroma routine against reference
+      run: |
+        cc -O2 -Wall -Werror -o t_chroma tools/tests/test_h264chroma.c source/mplayer/ffmpeg/libavcodec/ppc/h264chroma_swar.c
+        ./t_chroma
+
     - name: Build accelerated objects
       run: |
         docker run --rm -v "$PWD":/src -w /src devkitpro/devkitppc:20190212 bash tools/build-paired.sh
@@ -58,7 +63,7 @@ jobs:
         $DEVKITPPC/bin/powerpc-eabi-nm "$ELF" | grep -E ' [Tt] .*(_paired|ff_h264_pred_init_ppc|ff_vc1dsp_init_ppc)' | head -40
         n=$($DEVKITPPC/bin/powerpc-eabi-objdump -d "$ELF" | grep -cE '\s(ps_|psq_)')
         echo "instrucoes paired singles no executavel: $n"
-        for f in ff_dsputil_init_paired ff_float_init_paired ff_fft_init_paired ff_imdct_half_paired; do
+        for f in ff_dsputil_init_paired ff_float_init_paired ff_fft_init_paired ff_imdct_half_paired witflix_put_h264_chroma_mc8 witflix_avg_h264_chroma_mc4; do
           $DEVKITPPC/bin/powerpc-eabi-nm "$ELF" | grep -q "$f" && echo "ok $f" || echo "AUSENTE $f"
         done
 

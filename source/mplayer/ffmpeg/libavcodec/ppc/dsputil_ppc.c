@@ -22,6 +22,7 @@
 
 #include "libavutil/cpu.h"
 #include "libavcodec/dsputil.h"
+#include "h264chroma_swar.h"
 #include "dsputil_altivec.h"
 #ifdef GEKKO
 #include "dsputil_paired.h"
@@ -258,8 +259,14 @@ void ff_dsputil_init_ppc(DSPContext* c, AVCodecContext *avctx)
     ff_dsputil_init_paired(c, avctx);
     ff_float_init_paired(c, avctx);
 
-    /* WitFLIX: desligado, o GCC 8 copia os pares errado (imagem verde/rosa) */
-    if (0 && CONFIG_H264_DECODER)
-        ff_dsputil_h264_init_ppc(c, avctx);
 #endif /* HAVE_PAIRED */
+
+    /* WitFLIX: no lugar da versao paired singles (o GCC 8 a compila errado);
+     * mc2 continua em C */
+    if (CONFIG_H264_DECODER && avctx->bits_per_raw_sample <= 8) {
+        c->put_h264_chroma_pixels_tab[0] = witflix_put_h264_chroma_mc8;
+        c->put_h264_chroma_pixels_tab[1] = witflix_put_h264_chroma_mc4;
+        c->avg_h264_chroma_pixels_tab[0] = witflix_avg_h264_chroma_mc8;
+        c->avg_h264_chroma_pixels_tab[1] = witflix_avg_h264_chroma_mc4;
+    }
 }
