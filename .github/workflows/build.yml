@@ -6,7 +6,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: ["20180522", "20190212"]
+        tag: ["jessie-slim", "stretch-slim"]
     steps:
     - uses: actions/checkout@v4
-    - run: docker run --rm -v "$PWD":/src -w /src devkitpro/devkitppc:${{ matrix.tag }} bash tools/probe.sh
+    - run: docker run --rm -v "$PWD":/src -w /src debian:${{ matrix.tag }} bash tools/probe.sh
