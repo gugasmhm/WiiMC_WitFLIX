@@ -3,10 +3,6 @@ on: [push]
 jobs:
   d:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        tag: ["jessie-slim", "stretch-slim"]
     steps:
     - uses: actions/checkout@v4
-    - run: docker run --rm -v "$PWD":/src -w /src debian:${{ matrix.tag }} bash tools/probe.sh
+    - run: docker run --rm -v "$PWD":/src -w /src ubuntu:14.04 bash tools/probe.sh
