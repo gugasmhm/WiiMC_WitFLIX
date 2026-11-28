@@ -17,6 +17,7 @@
  */
 
 #include "../utils/tls.h"
+void wiiHlsDiag(const char *msg);
 #include "config.h"
 
 #include <errno.h>
@@ -4114,6 +4115,18 @@ stream_cache_min_percent=0.2;
         }
     }
 
+#ifdef GEKKO
+    if (mpctx->stream && mpctx->file_format == DEMUXER_TYPE_MPEG_TS && is_http_url(filename)) {
+        char msg[128];
+        sh_video_t *v = mpctx->sh_video;
+        sh_audio_t *a = mpctx->sh_audio;
+        snprintf(msg, sizeof(msg), "diag formato: video=%s 0x%x %dx%d, audio=%s 0x%x %d canais",
+                 v ? "sim" : "nao", v ? v->format : 0, v ? v->disp_w : 0, v ? v->disp_h : 0,
+                 a ? "sim" : "nao", a ? a->format : 0, a ? a->channels : 0);
+        wiiHlsDiag(msg);
+    }
+#endif
+
     if (!mpctx->sh_video && !mpctx->sh_audio) {
         mp_msg(MSGT_CPLAYER, MSGL_FATAL, MSGTR_NoStreamFound);
 #ifdef CONFIG_DVBIN
@@ -4812,6 +4825,14 @@ total_time_usage_start=GetTimer();
     }
 
 goto_next_file:  // don't jump here after ao/vo/getch initialization!
+
+#ifdef GEKKO
+    if (filename && is_http_url(filename) && strstr(filename, ".m3u8")) {
+        char msg[64];
+        snprintf(msg, sizeof(msg), "diag player: encerrou, eof=%d", mpctx->eof);
+        wiiHlsDiag(msg);
+    }
+#endif
 
     mp_msg(MSGT_CPLAYER, MSGL_INFO, "\n");
 

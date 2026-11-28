@@ -1,3 +1,5 @@
+OBJS                                   += ppc/h264chroma_swar.o
+
 OBJS                                   += ppc/dsputil_ppc.o             \
 
 FFT-OBJS-$(HAVE_GNU_AS)                += ppc/fft_altivec_s.o

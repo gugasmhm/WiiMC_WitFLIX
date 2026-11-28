@@ -170,7 +170,7 @@ void ff_binkdsp_init(BinkDSPContext *c)
     c->idct_add    = bink_idct_add_c;
     c->idct_put    = bink_idct_put_c;    
     c->scale_block = scale_block_c;
-#if HAVE_PAIRED
+#if 0 /* WitFLIX: GCC 8 copia os pares errado */
     c->scale_block = scale_block_paired;
 #endif
 }

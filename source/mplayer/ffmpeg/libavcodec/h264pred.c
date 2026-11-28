@@ -533,6 +533,7 @@ void ff_h264_pred_init(H264PredContext *h, int codec_id, const int bit_depth, co
     }
 
     if (ARCH_ARM) ff_h264_pred_init_arm(h, codec_id, bit_depth, chroma_format_idc);
-    if (HAVE_PAIRED) ff_h264_pred_init_ppc(h, codec_id, bit_depth, chroma_format_idc);
+    /* WitFLIX: desligado, o GCC 8 copia os pares errado (imagem verde/rosa) */
+    if (0 && HAVE_PAIRED) ff_h264_pred_init_ppc(h, codec_id, bit_depth, chroma_format_idc);
     if (HAVE_MMX) ff_h264_pred_init_x86(h, codec_id, bit_depth, chroma_format_idc);
 }

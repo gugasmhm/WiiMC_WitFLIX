@@ -1,15 +1,30 @@
 name: tmp emu
 on: [push]
 jobs:
+  paired:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - run: docker run --rm -v "$PWD":/src -w /src devkitpro/devkitppc:20190212 bash tools/build-paired.sh
+    - uses: actions/upload-artifact@v4
+      with: {name: paired-objs, path: paired-objs.tar}
   dol:
+    needs: paired
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/extremscorner/libogc2:latest
     steps:
     - uses: actions/checkout@v4
-    - run: cd tools/emu && make hello.dol
+      with: {fetch-depth: 0}
+    - uses: actions/download-artifact@v4
+      with: {name: paired-objs}
+    - run: |
+        tar -xf paired-objs.tar; tar -tf paired-objs.tar | xargs touch
+        git config --global --add safe.directory "$PWD"
+        make -f Makefile -j1 > build.log 2>&1 || { tail -40 build.log; exit 1; }
+        cd tools/emu && make audio.dol
     - uses: actions/upload-artifact@v4
-      with: {name: dol, path: tools/emu/hello.dol}
+      with: {name: dol, path: tools/emu/audio.dol}
   run:
     needs: dol
     runs-on: ubuntu-latest
@@ -18,5 +33,5 @@ jobs:
     - uses: actions/download-artifact@v4
       with: {name: dol}
     - run: |
-        sudo apt-get update -qq && sudo apt-get install -y -qq dolphin-emu >/dev/null; dpkg -l dolphin-emu | tail -1
-        bash tools/emu/run.sh hello.dol 40
+        sudo apt-get update -qq && sudo apt-get install -y -qq dolphin-emu >/dev/null
+        bash tools/emu/run.sh audio.dol 90

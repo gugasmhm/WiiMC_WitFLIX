@@ -6,5 +6,5 @@ timeout ${2:-60} $BIN -u $D -p headless -v Null -a HLE -e "$1" > $D/out.txt 2>&1
 P=$!
 for i in $(seq 1 ${2:-60}); do sleep 1; grep -qs 'EMUTEST FIM' $D/out.txt $D/Logs/dolphin.log && break; done
 kill $P 2>/dev/null
-cat $D/out.txt $D/Logs/dolphin.log 2>/dev/null | grep -o 'EMUTEST.*' | sort -u
-echo "--- saida do emulador"; head -15 $D/out.txt
+grep -a -h -o 'EMUTEST.*' $D/out.txt
+echo "--- saida do emulador"; grep -av EMUTEST $D/out.txt | head -15

@@ -33,6 +33,8 @@ static void io_close(void *h)
 	free(c);
 }
 
+static void io_log(const char *msg);
+
 static void *io_open(const char *url, char *final_url)
 {
 	char current[HLS_URL_MAX], next[HLS_URL_MAX];
@@ -55,7 +57,14 @@ static void *io_open(const char *url, char *final_url)
 		c->fd = http_send_request(u, 0);
 		url_free(u);
 		if (c->fd >= 0) c->hdr = http_read_response(c->fd);
-		if (!c->hdr) { io_close(c); return NULL; }
+		if (!c->hdr)
+		{
+			io_log(c->fd < 0 ? "diag: sem conexao" : "diag: servidor nao respondeu");
+			io_close(c);
+			return NULL;
+		}
+		if (http_get_field(c->hdr, "Transfer-Encoding")) io_log("diag: resposta em Transfer-Encoding");
+		if (http_get_field(c->hdr, "Content-Encoding")) io_log("diag: resposta em Content-Encoding");
 
 		if (c->hdr->status_code == 200)
 		{
@@ -67,6 +76,11 @@ static void *io_open(const char *url, char *final_url)
 		if (!location)
 		{
 			mp_msg(MSGT_NETWORK, MSGL_ERR, "HLS: server returned %d\n", c->hdr->status_code);
+			{
+				char msg[48];
+				snprintf(msg, sizeof(msg), "diag: servidor respondeu %d", c->hdr->status_code);
+				io_log(msg);
+			}
 			io_close(c);
 			return NULL;
 		}
@@ -95,6 +109,8 @@ static int io_read(void *h, char *buf, int len)
 static int io_aborted(void) { return controlledbygui == 2; }
 static void io_sleep(int ms) { usleep(ms * 1000); }
 
+void wiiHlsDiag(const char *msg);
+
 static void io_log(const char *msg)
 {
 	FILE *f = fopen("sd1:/wiimc_tls.log", "a");
@@ -103,6 +119,8 @@ static void io_log(const char *msg)
 	fprintf(f, "%s\n", msg);
 	fclose(f);
 }
+
+void wiiHlsDiag(const char *msg) { io_log(msg); }
 
 static const hls_io io = { io_open, io_read, io_close, io_aborted, io_sleep, io_log };
 
@@ -121,8 +139,13 @@ int wiiIsHlsUrl(const char *url)
 	int size = 0, n;
 	void *c;
 
-	if (!has_m3u8(url) || !(c = io_open(url, final_url)))
+	if (!has_m3u8(url))
 		return 0;
+	if (!(c = io_open(url, final_url)))
+	{
+		io_log("diag menu: nao abriu o m3u8");
+		return 0;
+	}
 	while (size < 4096 && (n = io_read(c, head + size, 4096 - size)) > 0)
 	{
 		size += n;
@@ -131,6 +154,7 @@ int wiiIsHlsUrl(const char *url)
 	}
 	head[size] = 0;
 	io_close(c);
+	io_log(strstr(head, "#EXT-X-") ? "diag menu: e HLS" : "diag menu: nao parece HLS (tratado como lista)");
 	return strstr(head, "#EXT-X-") != NULL;
 }
 
@@ -156,7 +180,10 @@ static int open_s(stream_t *stream, int mode, void *opts, int *file_format)
 			|| !has_m3u8(stream->url))
 		return STREAM_UNSUPPORTED;
 
+	io_log("diag player: abrindo HLS");
 	result = hls_open(&h, stream->url, &io);
+	if (result != HLS_OK)
+		io_log(result == HLS_NOT_HLS ? "diag player: nao e HLS" : "diag player: HLS nao suportado");
 	if (result == HLS_NOT_HLS) return STREAM_UNSUPPORTED;
 	if (result != HLS_OK) return STREAM_ERROR;
 
